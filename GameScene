@@ -1,0 +1,568 @@
+//
+//  GameScene.swift
+//  Starry Night
+//
+//  Created by Thomas Shehadeh on 9/21/19.
+//  Copyright © 2019 Thomas Shehadeh. All rights reserved.
+//
+
+import SpriteKit
+var gameScore = 0
+
+class GameScene: SKScene, SKPhysicsContactDelegate {
+    
+    let scoreBoard = SKLabelNode(fontNamed: "ArcadeClassic")
+    let pauseButton = SKLabelNode(fontNamed: "ArcadeClassic")
+
+    let levelUp = SKLabelNode(fontNamed: "ArcadeClassic")
+    
+    var levelNumber = 0
+    
+    var livesNumber = 5
+    let livesDisplay = SKLabelNode(fontNamed: "ArcadeClassic")
+
+    enum gameState{
+        case preGame // game state is before playing
+        case inGame // during the playing of game
+        case afterGame // after the game has ended
+        case pauseGame // when game is paused
+        
+    }
+    
+    let tapToBegin = SKLabelNode(fontNamed: "ArcadeClassic")
+    
+    var currentGameState = gameState.preGame
+    
+    var player = SKSpriteNode(imageNamed: "wizard1")
+    var playerLeft = SKSpriteNode(imageNamed: "wizard2")
+    var playerRight = SKSpriteNode(imageNamed: "wizard")
+    
+    struct physicsCategories{
+        //0
+        static let None : UInt32 = 0
+        //1
+        static let Player : UInt32 = 0b1
+        //2
+        static let Lightning : UInt32 = 0b10
+        //4
+        static let Bird : UInt32 = 0b100
+    
+    }
+    
+    func random() -> CGFloat{
+        return CGFloat(Float(arc4random()) / 0xFFFFFFFF)
+    }
+    func random(min: CGFloat, max:CGFloat) -> CGFloat{
+        return random() * (max-min) + min
+    }
+    
+    var gameArea: CGRect
+    
+    override init(size: CGSize){
+        
+        let maxAspectRatio: CGFloat = 16.0/9.0
+        let playableWidth = size.height/maxAspectRatio
+        let margin = (size.width - playableWidth) / 2
+        gameArea = CGRect(x: margin, y: 0, width: playableWidth, height: size.height)
+        
+        
+        super.init(size: size)
+    }
+    
+    required init?(coder aDecoder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+    
+    
+    //Runs as soon as scene goes up
+    //Whatever is put here loads as soon as the game loads
+    override func didMove(to view: SKView) {
+        
+        gameScore = 0
+
+        self.physicsWorld.contactDelegate = self
+        
+        
+        levelUp.fontSize = 100
+        levelUp.fontColor = SKColor.green
+        levelUp.horizontalAlignmentMode = SKLabelHorizontalAlignmentMode.center
+        levelUp.position = CGPoint(x: self.size.width/2, y:self.size.height/2)
+        levelUp.alpha = 0
+        levelUp.zPosition = 100
+        self.addChild(levelUp)
+        
+        scoreBoard.text = "Score : 0"
+        scoreBoard.fontSize = 85
+        scoreBoard.fontColor = SKColor.white
+        scoreBoard.horizontalAlignmentMode = SKLabelHorizontalAlignmentMode.left
+        scoreBoard.position = CGPoint(x: self.size.width*0.22, y:self.size.height + scoreBoard.frame.size.height)
+        scoreBoard.zPosition = 100
+        
+        livesDisplay.text = "Lives : 5"
+        livesDisplay.fontSize = 85
+        livesDisplay.fontColor = SKColor.white
+        livesDisplay.horizontalAlignmentMode = SKLabelHorizontalAlignmentMode.center
+        livesDisplay.position = CGPoint(x: self.size.width*0.65, y:self.size.height + livesDisplay.frame.size.height)
+        livesDisplay.zPosition = 100
+        
+        pauseButton.text = "|  |"
+        pauseButton.fontSize = 85
+        pauseButton.fontColor = SKColor.white
+        pauseButton.horizontalAlignmentMode = SKLabelHorizontalAlignmentMode.center
+        pauseButton.position = CGPoint(x: self.size.width*0.75, y:self.size.height + livesDisplay.frame.size.height)
+        pauseButton.zPosition = 100
+        
+        let moveOntoScreen = SKAction.moveTo(y: self.size.height*0.9, duration: 0.5)
+        
+        scoreBoard.run(moveOntoScreen)
+        livesDisplay.run(moveOntoScreen)
+        pauseButton.run(moveOntoScreen)
+        
+        self.addChild(scoreBoard)
+        self.addChild(livesDisplay)
+//        self.addChild(pauseButton)
+//
+        let background = SKSpriteNode(imageNamed: "background")
+        background.size = self.size
+        background.position = CGPoint(x: self.size.width/2, y: self.size.height/2)
+        background.zPosition = 0
+        self.addChild(background)
+        
+        tapToBegin.text = "Tap  To  Begin"
+        tapToBegin.fontSize = 100
+        tapToBegin.fontColor = SKColor.white
+        tapToBegin.horizontalAlignmentMode = SKLabelHorizontalAlignmentMode.center
+        tapToBegin.position = CGPoint(x: self.size.width/2, y:self.size.height/2)
+        tapToBegin.alpha = 0
+        tapToBegin.zPosition = 1
+        self.addChild(tapToBegin)
+
+        let fadeIn = SKAction.fadeIn(withDuration: 0.5)
+        tapToBegin.run(fadeIn)
+        
+        
+        
+        player.setScale(1)
+        player.name = ("player")
+        player.position = CGPoint(x: self.size.width/2, y: self.size.height + player.frame.size.height)
+        player.zPosition = 2
+        player.physicsBody = SKPhysicsBody(rectangleOf: player.size)
+        player.physicsBody!.affectedByGravity = false
+        player.physicsBody!.categoryBitMask = physicsCategories.Player
+        player.physicsBody!.collisionBitMask = physicsCategories.None
+        player.physicsBody?.contactTestBitMask = physicsCategories.Bird
+        self.addChild(player)
+        
+    }
+    
+    func startGame(){
+        
+        currentGameState = gameState.inGame
+        
+        let fadeOut = SKAction.fadeIn(withDuration: 0.5)
+        let delete = SKAction.removeFromParent()
+        let deleteSequence = SKAction.sequence([fadeOut,delete])
+        tapToBegin.run(deleteSequence)
+        
+        let playerFallDown = SKAction.moveTo(y: self.size.height*0.1, duration: 1.5)
+        let playerSpin = SKAction.rotate(byAngle: 12.56, duration: 1.25)
+        let playerFall = SKAction.group([playerFallDown, playerSpin]);
+        let startLevelAction = SKAction.run(startNewLevel)
+        let startGameSequence = SKAction.sequence([playerFall,startLevelAction])
+        player.run(startGameSequence)
+        
+    }
+
+    func loseALife(){
+        
+        livesNumber -= 1
+        livesDisplay.text = "Lives :  \(livesNumber)"
+        
+        let scaleUp = SKAction.scale(to: 1.2, duration: 0.1)
+        let shake1 = SKAction.rotate(byAngle: 0.10, duration: 0.1)
+        let shake2 = SKAction.rotate(byAngle: -0.20, duration: 0.1)
+        let shake3 = SKAction.rotate(byAngle: 0.10, duration: 0.1)
+        let scaleDown = SKAction.scale(to: 1, duration: 0.2)
+        
+        let lossSequence = SKAction.sequence([scaleUp, shake1, shake2, shake3, scaleDown])
+        
+        livesDisplay.run(lossSequence)
+        
+        if livesNumber == 0 {
+            runGameOver()
+        }
+
+
+
+    }
+    
+    func didLevelUp(){
+        
+        levelUp.text = "Level  Up"
+        
+        let fadeIn = SKAction.fadeIn(withDuration: 1)
+        let fadeOut = SKAction.fadeOut(withDuration: 1)
+        let levelUpSequence = SKAction.sequence([fadeIn, fadeOut])
+
+        levelUp.run(levelUpSequence)
+        
+    }
+    
+    func addScore(){
+        
+        gameScore += 1
+        scoreBoard.text = "Score :  \(gameScore)"
+    
+        if gameScore == 10 || gameScore == 25 || gameScore == 50 || gameScore == 100 || gameScore == 250 || gameScore == 500{
+            
+            startNewLevel()
+            didLevelUp()
+            
+        }
+        
+    }
+    
+    func instaDeath(){
+        
+        livesNumber = 0
+        livesDisplay.text = "Lives :  \(livesNumber)"
+        
+        let scaleUp = SKAction.scale(to: 1.2, duration: 0.1)
+        let shake1 = SKAction.rotate(byAngle: 0.10, duration: 0.1)
+        let shake2 = SKAction.rotate(byAngle: -0.20, duration: 0.1)
+        let shake3 = SKAction.rotate(byAngle: 0.10, duration: 0.1)
+        let scaleDown = SKAction.scale(to: 1, duration: 0.2)
+        
+        let lossSequence = SKAction.sequence([scaleUp, shake1, shake2, shake3, scaleDown])
+        
+        livesDisplay.run(lossSequence)
+
+    }
+    
+    func didBegin(_ contact: SKPhysicsContact) {
+        
+        var body1 = SKPhysicsBody()
+        var body2 = SKPhysicsBody()
+        
+        if contact.bodyA.categoryBitMask < contact.bodyB.categoryBitMask{
+            
+            body1 = contact.bodyA
+            body2 = contact.bodyB
+            
+        }else{
+            
+            body1 = contact.bodyB
+            body2 = contact.bodyA
+
+        }
+        
+        if body1.categoryBitMask == physicsCategories.Player && body2.categoryBitMask == physicsCategories.Bird{
+            //IF PLAYER HAS HIT ENEMY
+            
+            body1.node?.removeFromParent()
+            
+            let death = SKSpriteNode(imageNamed: "deathwizard")
+            death.position = body1.node!.position
+            death.zPosition = 3
+            death.setScale(0)
+            self.addChild(death)
+            instaDeath()
+            let randomXDeath = random(min: gameArea.minX, max: gameArea.maxX)
+
+            let deathPoint = CGPoint(x: randomXDeath, y: self.size.height/4)
+
+            let scaleIn = SKAction.scale(to: 1, duration: 0.4)
+            let riseUp = SKAction.move(to: deathPoint, duration: 4)
+            let fadeOut = SKAction.fadeOut(withDuration: 1)
+            let delete = SKAction.removeFromParent()
+            
+            let group = SKAction.group([riseUp, fadeOut]);
+            
+            let deathSequence = SKAction.sequence([scaleIn,group,delete])
+            
+            death.run(deathSequence)
+            
+            body2.node?.removeFromParent()
+            
+            runGameOver()
+            
+        }
+        if body1.categoryBitMask == physicsCategories.Lightning
+            && body2.categoryBitMask == physicsCategories.Bird{
+            //IF LIGHTNING HAS HIT BIRD
+            if body2.node != nil{
+                if body2.node!.position.y > self.size.height{
+                    return
+                }else{
+                    spawnExplosion(spawnPosition: body2.node!.position)
+                    addScore()
+                }
+            }
+            
+            body1.node?.removeFromParent()
+            body2.node?.removeFromParent()
+ 
+            
+        }
+        
+    }
+    
+    func spawnExplosion(spawnPosition: CGPoint){
+        
+        let explosion = SKSpriteNode(imageNamed: "feathers")
+        explosion.position = spawnPosition
+        explosion.zPosition = 3
+        explosion.setScale(0)
+        self.addChild(explosion)
+        
+        let scaleIn = SKAction.scale(to: 1, duration: 0.1)
+        let scaleOut = SKAction.fadeOut(withDuration: 0.1)
+        let delete = SKAction.removeFromParent()
+        
+        let explosionSequence = SKAction.sequence([scaleIn,scaleOut,delete])
+        
+        explosion.run(explosionSequence)
+        
+        
+    }
+    
+    func startNewLevel(){
+        
+        levelNumber += 1
+        
+        if self.action(forKey: "spawningBirds") != nil{
+            self.removeAction(forKey: "spawningBirds")
+            
+        }
+        
+        var levelDuration = TimeInterval()
+        
+        switch levelNumber{
+            
+        case 1: levelDuration = 3
+        case 2: levelDuration = 2.5
+        case 3: levelDuration = 1.5
+        case 4: levelDuration = 1
+        case 5: levelDuration = 0.5
+        case 6: levelDuration = 0.25
+        case 7: levelDuration = 0.1
+        
+        default:
+            levelDuration = 0.25
+            print("Cannot Find Level Info")
+            
+        }
+        
+        let spawn = SKAction.run(spawnBird)
+        let waitToSpawn = SKAction.wait(forDuration: levelDuration)
+        let spawnSequence = SKAction.sequence([spawn,waitToSpawn])
+        let spawnForever = SKAction.repeatForever(spawnSequence)
+        self.run(spawnForever, withKey: "spawningBirds")
+        
+        
+    }
+    
+    func spawnJewel(){
+        
+        
+        
+    }
+    
+    func spawnBird(){
+        let randomXStart = random(min: gameArea.minX, max: gameArea.maxX)
+        let randomXEnd = random(min: gameArea.minX, max: gameArea.maxX)
+        
+        let startPoint = CGPoint(x: randomXStart, y: self.size.height * 1.2)
+        let endPoint = CGPoint(x: randomXEnd, y: -self.size.height * 0.2)
+        
+        let bird = SKSpriteNode(imageNamed: "bird1")
+        bird.name = ("bird")
+        bird.setScale(1)
+        bird.position = startPoint
+        bird.zPosition = 2
+        bird.physicsBody = SKPhysicsBody(rectangleOf: bird.size)
+        bird.physicsBody!.affectedByGravity = false
+        bird.physicsBody!.categoryBitMask = physicsCategories.Bird
+        bird.physicsBody!.collisionBitMask = physicsCategories.None
+        bird.physicsBody?.contactTestBitMask = physicsCategories.Lightning | physicsCategories.Player
+        self.addChild(bird)
+        
+        let moveBird = SKAction.move(to: endPoint, duration: 3)
+        let deleteBird = SKAction.removeFromParent()
+        let loseALifeAction = SKAction.run(loseALife)
+        let birdSequence = SKAction.sequence([moveBird, deleteBird, loseALifeAction])
+        
+        if(currentGameState == gameState.inGame){
+            bird.run(birdSequence)
+        }
+        
+        let dx = endPoint.x - startPoint.x
+        let dy = endPoint.y - startPoint.y
+        let amountToRotate = atan2(dy,dx)
+        
+        if startPoint.x > endPoint.x{
+            
+            bird.texture = SKTexture(imageNamed: "bird1")
+            bird.zRotation = -amountToRotate - 0.25
+            
+            
+        } else{
+            
+            bird.texture = SKTexture(imageNamed: "bird2")
+            bird.zRotation = amountToRotate
+            
+            
+        }
+        
+        
+    }
+    
+    
+    func fireProj(){
+        
+        let lightning = SKSpriteNode(imageNamed: "lightning")
+        lightning.name = ("light")
+        lightning.setScale(1)
+        lightning.position = player.position
+        lightning.zPosition = 1
+        lightning.physicsBody = SKPhysicsBody(rectangleOf: lightning.size)
+        lightning.physicsBody!.affectedByGravity = false
+        lightning.physicsBody!.categoryBitMask = physicsCategories.Lightning
+        lightning.physicsBody!.collisionBitMask = physicsCategories.None
+        lightning.physicsBody?.contactTestBitMask = physicsCategories.Bird
+        self.addChild(lightning)
+        
+        let moveLightning = SKAction.moveTo(y: self.size.height + lightning.size.height, duration: 1)
+        let deleteLightning = SKAction.removeFromParent()
+        let lightningSequence = SKAction.sequence([moveLightning, deleteLightning])
+        lightning.run(lightningSequence)
+        
+    }
+    
+    func runPauseGame(){
+        
+        currentGameState = gameState.pauseGame
+        
+        
+        self.removeAllActions()
+        
+        self.enumerateChildNodes(withName: ("light")){
+            bullet, stop in
+            
+            bullet.removeAllActions()
+        }
+        self.enumerateChildNodes(withName: ("bird")){
+            bird, stop in
+            
+            bird.removeAllActions()
+        }
+        self.enumerateChildNodes(withName: ("player")){
+            player, stop in
+            
+            player.removeAllActions()
+         }
+        
+        
+        let waitToChangeScene = SKAction.wait(forDuration: 1.2)
+        let changeSceneAction = SKAction.run(pauseGame)
+        let waitToChangeScene2 = SKAction.wait(forDuration: 3)
+        let changeSceneSequence = SKAction.sequence([waitToChangeScene, changeSceneAction,waitToChangeScene2])
+        self.run(changeSceneSequence)
+
+        
+    }
+    
+    func runGameOver(){
+        
+        currentGameState = gameState.afterGame
+        
+        let waitToChangeScene = SKAction.wait(forDuration: 1.2)
+        let changeSceneAction = SKAction.run(changeScene)
+        let waitToChangeScene2 = SKAction.wait(forDuration: 3)
+        let changeSceneSequence = SKAction.sequence([waitToChangeScene, changeSceneAction,waitToChangeScene2])
+        self.run(changeSceneSequence)
+    }
+    
+    func changeScene(){
+        
+    let sceneToMoveTo = GameOverScene(size: self.size)
+        sceneToMoveTo.scaleMode = self.scaleMode
+            let myTransition = SKTransition.fade(withDuration: 3)
+        self.view!.presentScene(sceneToMoveTo, transition: myTransition)
+        
+    }
+    
+    func pauseGame(){
+        
+        let sceneToMoveTo = GamePaused(size: self.size)
+        sceneToMoveTo.scaleMode = self.scaleMode
+        self.view!.presentScene(sceneToMoveTo)
+        
+    }
+    
+    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+        if(currentGameState == gameState.preGame){
+            startGame()
+        }
+        else if(currentGameState == gameState.inGame){
+            fireProj()
+        }
+//
+//        for touch: AnyObject in touches{
+//
+//            let pointOfTouch = touch.location(in: self)
+//
+//            if pauseButton.contains(pointOfTouch){
+//                runPauseGame()
+//
+//            }
+//
+//        }
+    }
+    
+    override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
+        
+        for touch: AnyObject in touches{
+            //            let location = touch.location(in: self)
+            
+            let pointOfTouch = touch.location(in: self)
+            let previousPointOfTouch = touch.previousLocation(in: self)
+            
+            
+            //if player touches to the right
+            
+            if(pointOfTouch.x > previousPointOfTouch.x){
+                player.texture = SKTexture(imageNamed: "wizard")
+                let amountDragged = pointOfTouch.x - previousPointOfTouch.x
+                if(currentGameState == gameState.inGame){
+                player.position.x += amountDragged
+                }
+            }
+            //if player touches to the left
+            
+            if(pointOfTouch.x < previousPointOfTouch.x) {
+                player.texture = SKTexture(imageNamed: "wizard2")
+                let amountDragged = pointOfTouch.x - previousPointOfTouch.x
+                if(currentGameState == gameState.inGame){
+                player.position.x += amountDragged
+                }
+            }
+            
+            // Too far right
+            if player.position.x >= gameArea.maxX - player.size.width/2 {
+                player.position.x = gameArea.maxX - player.size.width/2
+                
+            }
+            // Too far left
+            if player.position.x <= gameArea.minX + player.size.width/2 {
+                player.position.x = gameArea.minX + player.size.width/2
+            }
+            
+            
+            
+        }
+    }
+    
+    
+    
+}
