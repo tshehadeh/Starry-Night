@@ -1,0 +1,88 @@
+//
+//  GameOverScene.swift
+//  Starry Night
+//
+//  Created by Thomas Shehadeh on 9/28/19.
+//  Copyright © 2019 Thomas Shehadeh. All rights reserved.
+//
+
+import Foundation
+import SpriteKit
+
+class GameOverScene: SKScene{
+    
+    let restart = SKLabelNode(fontNamed: "ArcadeClassic")
+
+    
+    override func didMove(to view: SKView) {
+        
+        let background = SKSpriteNode(imageNamed: "background")
+        background.size = self.size
+        background.position = CGPoint(x: self.size.width/2, y: self.size.height/2)
+        background.zPosition = 0
+        self.addChild(background)
+        
+        let gameOverLabel = SKLabelNode(fontNamed: "ArcadeClassic")
+        gameOverLabel.text = "Game  Over"
+        gameOverLabel.fontSize = 220
+        gameOverLabel.fontColor = SKColor.white
+        gameOverLabel.position = CGPoint(x: self.size.width/2, y: self.size.height * 0.7)
+        gameOverLabel.zPosition = 1
+        self.addChild(gameOverLabel)
+        
+        let scoreLabel = SKLabelNode(fontNamed: "ArcadeClassic")
+        scoreLabel.text = "Score : \(gameScore)"
+        scoreLabel.fontSize = 150
+        scoreLabel.fontColor = SKColor.white
+        scoreLabel.position = CGPoint(x: self.size.width/2, y: self.size.height * 0.45)
+        scoreLabel.zPosition = 1
+        self.addChild(scoreLabel)
+        
+        let defaults = UserDefaults()
+        var highScoreNumber = defaults.integer(forKey: "highScoreSaved")
+        
+        if gameScore > highScoreNumber{
+            highScoreNumber = gameScore
+            defaults.set(highScoreNumber, forKey: "highScoreSaved")
+            
+        }
+        let highScore = SKLabelNode(fontNamed: "ArcadeClassic")
+        highScore.text = "High Score : \(highScoreNumber)"
+        highScore.fontSize = 150
+        highScore.fontColor = SKColor.white
+        highScore.position = CGPoint(x: self.size.width/2, y: self.size.height * 0.55)
+        highScore.zPosition = 1
+        self.addChild(highScore)
+        
+        restart.text = "Restart"
+        restart.fontSize = 100
+        restart.fontColor = SKColor.white
+        restart.position = CGPoint(x: self.size.width/2, y: self.size.height * 0.35)
+        restart.zPosition = 1
+        self.addChild(restart)
+        
+        
+        
+        
+    }
+    
+    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+        
+        for touch: AnyObject in touches{
+            
+            let pointOfTouch = touch.location(in: self)
+            
+            if restart.contains(pointOfTouch){
+                
+                let sceneToMoveTo = GameScene(size: self.size)
+                sceneToMoveTo.scaleMode = self.scaleMode
+                let myTransition = SKTransition.fade(withDuration: 0.5)
+                self.view!.presentScene(sceneToMoveTo, transition: myTransition)
+                
+            }
+            
+        }
+    }
+    
+    
+}
