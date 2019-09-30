@@ -1,0 +1,93 @@
+//
+//  MainMenuScene.swift
+//  Starry Night
+//
+//  Created by Thomas Shehadeh on 9/28/19.
+//  Copyright © 2019 Thomas Shehadeh. All rights reserved.
+//
+
+import Foundation
+import SpriteKit
+
+class MainMenuScene: SKScene{
+    
+    override func didMove(to view: SKView) {
+        
+        let background = SKSpriteNode(imageNamed: "background")
+        background.size = self.size
+        background.position = CGPoint(x: self.size.width/2, y: self.size.height/2)
+        background.zPosition = 0
+        self.addChild(background)
+        
+        let gameName1 = SKLabelNode(fontNamed: "ArcadeClassic")
+        gameName1.text = "thomas shehadeh's"
+        gameName1.fontSize = 50
+        gameName1.fontColor = SKColor.white
+        gameName1.position = CGPoint(x: self.size.width/2 , y: self.size.height * 0.72)
+        gameName1.zPosition = 1
+        self.addChild(gameName1)
+        
+        
+        let name = SKLabelNode(fontNamed: "ArcadeClassic")
+        name.text = "A"
+        name.fontSize = 150
+        name.fontColor = SKColor.white
+        name.position = CGPoint(x: self.size.width/2 - 225, y: self.size.height * 0.65)
+        name.zPosition = 1
+        self.addChild(name)
+        
+        let gameName2 = SKLabelNode(fontNamed: "ArcadeClassic")
+        gameName2.text = "Starry"
+        gameName2.fontSize = 175
+        gameName2.fontColor = SKColor.white
+        gameName2.position = CGPoint(x: self.size.width/2 - 50, y: self.size.height * 0.60)
+        gameName2.zPosition = 1
+        self.addChild(gameName2)
+        
+        let gameName3 = SKLabelNode(fontNamed: "ArcadeClassic")
+        gameName3.text = "Night"
+        gameName3.fontSize = 160
+        gameName3.fontColor = SKColor.white
+        gameName3.position = CGPoint(x: self.size.width/2 + 125, y: self.size.height * 0.55)
+        gameName3.zPosition = 1
+        self.addChild(gameName3)
+        
+        
+        let startButton = SKLabelNode(fontNamed: "ArcadeClassic")
+        startButton.text = "Start"
+        startButton.name = "start button"
+        startButton.fontSize = 160
+        startButton.fontColor = SKColor.white
+        startButton.position = CGPoint(x: self.size.width/2, y: self.size.height * 0.10)
+        startButton.zPosition = 1
+        
+        let fadeIn = SKAction.fadeIn(withDuration: 1)
+        let fadeOut = SKAction.fadeOut(withDuration: 1)
+        let fading = SKAction.sequence([fadeIn,fadeOut])
+        let forever = SKAction.repeatForever(fading)
+        
+        startButton.run(forever)
+        
+        self.addChild(startButton)
+        
+        
+    }
+    
+    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+        
+        for touch: AnyObject in touches{
+            
+            let pointOfTouch = touch.location(in: self)
+            let nodeITapped = atPoint(pointOfTouch)
+            if nodeITapped.name == "start button"{
+                
+                let sceneToMoveTo = GameScene(size: self.size)
+                sceneToMoveTo.scaleMode = self.scaleMode
+                let myTransition = SKTransition.fade(withDuration: 0.5)
+                self.view!.presentScene(sceneToMoveTo, transition: myTransition)
+                
+            }
+        }
+        
+    }
+}
